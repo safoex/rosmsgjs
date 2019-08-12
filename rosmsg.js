@@ -6,6 +6,96 @@ var ROSMSG = ROSMSG || new Object();
 // required libraries
 var fs = require('fs');
 
+
+var ROS = ROS || new Object();
+
+ROS.types = {};
+ROS.packages = {}
+
+ROS.primitives = {
+	string: function() {return String()},
+	bool: function() {return Boolean(false)},
+	time: function() {return {secs: 0, nsecs: 0}},
+	duration: function() {return {secs: 0, nsecs: 0}},
+	numeric: function() {return Number(0);},
+	known_numeric: ["int8", "uint8", "int16", "int32", "int64", "uint16", "uint32", "uint64", "float32", "float64"]
+}
+
+ROS.load_msg = function(msg) {
+	// get name
+	var name = "";
+	name = msg["$file"].split(".")[0].split("/");
+	pkg = name[name.length-3];
+	name = name[name.length-1];
+	ROS.types[name] = {fields: {}, constants: {}}
+	if(!(pkg in ROS.packages))
+		ROS.packages[pkg] = {};
+	ROS.packages[pkg][name] = {fields: {}, constants: {}};
+	for(var k in msg) {
+		if(k !== "$file" && k !== "#") {
+			if(msg[k]["constant"].length > 0) {
+
+			}
+			else {
+				ROS.types[name].fields[k] = msg[k]["type"];
+				ROS.packages[pkg][name].fields[k] = msg[k]["type"];
+			}
+		}
+	}
+}
+
+ROS.load_msgs = function (obj) {
+	for(var i in obj) {
+		ROS.load_msg(obj[i]);
+	}
+}
+
+ROS.msg_req = function(iter_over) {
+	z = new Object();
+	for(var k in iter_over) {
+		console.log(k)
+		z[k] = ROS.msg(iter_over[k])
+	}
+	return z;
+}
+
+ROS.msg = function (type) {
+	if (ROS.primitives.known_numeric.indexOf(type) !== -1) {
+		return ROS.primitives.numeric();
+	}
+	if (type in ROS.primitives) {
+		return ROS.primitives[type]();
+	}
+	else {
+		if(!new.target) return new ROS.msg(type);
+
+		if (type in ROS.types) {
+			for (var k in ROS.types[type].fields) {
+				if (ROS.types[type].fields.hasOwnProperty(k))
+					this[k] = ROS.msg(ROS.types[type].fields[k]);
+			}
+		} else if (type.search('[]') !== -1) {
+			return [];
+		} else {
+			var a = type.split('/');
+			if (a.length > 1) {
+				var pkg = a[0];
+				var type = a[1];
+				if (pkg in ROS.packages && type in ROS.packages[pkg]) {
+					console.log(ROS.packages[pkg][type])
+					for (var k in ROS.packages[pkg][type].fields) {
+						if (ROS.packages[pkg][type].fields.hasOwnProperty(k)) {
+
+							this[k] = ROS.msg(ROS.packages[pkg][type].fields[k]);
+						}
+					}
+				}
+			}
+		}
+	}
+
+}
+
 // parse the directory, and output to output directory
 ROSMSG.parse = function (dir, output) {
 	// default output directory
@@ -29,7 +119,7 @@ ROSMSG.parse = function (dir, output) {
 		}
 	}
 	// write the entire msg list into file
-	fs.writeFile(dir + ".json", JSON.stringify(msg_list, null, 4), function(err) {
+	fs.writeFile("test" + ".json", JSON.stringify(msg_list, null, 4), function(err) {
 		if (err) {
 			console.log(err);
 		}
@@ -69,6 +159,7 @@ ROSMSG.parseMsg = function (file) {
 			continue;
 		}
 		// comment lines, save to json # key
+		lines[i] = lines[i].trim();
 		if ("#" == lines[i][0]) {
 			ROSMSG.addToJson(msg, "#", lines[i].substr(1));
 		}
@@ -140,4 +231,14 @@ ROSMSG.addToJson = function (json, key, value) {
 	return json;
 }
 
-ROSMSG.parse("common_msgs", "common_msgs_json");
+// ROSMSG.parse("common_msgs", "common_msgs_json");
+ROS.load_msgs(ROSMSG.parse("/opt/ros/melodic/share", "test"));
+
+fs.writeFile("test_ros_msgs"  + ".json", JSON.stringify(ROS, null, 4), function(err) {
+	if (err) {
+		console.log(err);
+	}
+});
+
+console.log(new ROS.msg("PoseStamped"))
+console.log(ROS.types["Pose"])
