@@ -1,4 +1,4 @@
-{
+var ROS = {
     "types": {
         "TestAction": {
             "fields": {
