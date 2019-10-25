@@ -440,5 +440,5 @@ fs.writeFile("ros_embed_description"  + ".js", "var ROS = " + JSON.stringify(ROS
 ROS.beautify()
 
 // console.log(ROS.packages.move_base_msgs)
-console.log(JSON.stringify(ROS.move_base_msgs.MoveBaseActionGoal()))
+console.log(JSON.stringify(ROS.rosgraph_msgs.Clock()))
 // console.log(ROSMSG.getFileTree("/opt/ros/melodic/share"));
